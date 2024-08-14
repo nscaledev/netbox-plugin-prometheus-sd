@@ -85,6 +85,12 @@ class PrometheusDeviceSerializer(serializers.ModelSerializer, PrometheusTargetsM
         
         utils.extract_custom_fields(obj, labels)
         utils.extract_rack_u_poistion(obj, labels)
+<<<<<<< HEAD
+
+        if hasattr(obj, "location") and obj.location is not None:
+            utils.extract_full_location(obj, labels)
+=======
+>>>>>>> ba9ea5b (adding the ability to get the rack U position and feed it into labels.)
 
         if hasattr(obj, "location") and obj.location is not None:
             utils.extract_full_location(obj, labels)

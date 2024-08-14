@@ -127,8 +127,10 @@ def extract_full_location(obj,labels: LabelDict):
         for ancestor in ancestors:
             string += str(ancestor) + "/"
         string += obj.location.name + "/"
-        if obj.rack.name != None:
+
+        if obj.rack != None:
             string += obj.rack.name
+           
         labels["full_location"] = string
 
 
