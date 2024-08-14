@@ -218,12 +218,6 @@ class PrometheusDeviceSerializerTests(TestCase):
         self.assertDictContainsSubset(
             {"__meta_netbox_rack_u_position": "1.0"}, data["labels"]
         )
-<<<<<<< HEAD
-        self.assertDictContainsSubset(
-            {"__meta_netbox_full_location": "Site/First Floor/R01B01"}, data["labels"]
-        )
-=======
->>>>>>> ba9ea5b (adding the ability to get the rack U position and feed it into labels.)
 
         self.assertDictContainsSubset(
             {"__meta_netbox_full_location": "Site/First Floor/R01B01"}, data["labels"]
