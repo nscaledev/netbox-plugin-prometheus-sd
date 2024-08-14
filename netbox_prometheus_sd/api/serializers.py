@@ -92,6 +92,9 @@ class PrometheusDeviceSerializer(serializers.ModelSerializer, PrometheusTargetsM
 =======
 >>>>>>> ba9ea5b (adding the ability to get the rack U position and feed it into labels.)
 
+        if hasattr(obj, "location") and obj.location is not None:
+            utils.extract_full_location(obj, labels)
+
         if hasattr(obj, "role") and obj.role is not None:
             labels["role"] = obj.role.name
             labels["role_slug"] = obj.role.slug

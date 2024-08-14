@@ -225,6 +225,11 @@ class PrometheusDeviceSerializerTests(TestCase):
 =======
 >>>>>>> ba9ea5b (adding the ability to get the rack U position and feed it into labels.)
 
+        self.assertDictContainsSubset(
+            {"__meta_netbox_full_location": "Site/First Floor/R01B01"}, data["labels"]
+        )
+
+
 
 class PrometheusIPAddressSerializerTests(TestCase):
     def test_ip_minimal_to_target(self):
