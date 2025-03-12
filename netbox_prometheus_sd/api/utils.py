@@ -174,14 +174,24 @@ def extract_rack_u_poistion(obj, labels: LabelDict):
         labels["rack_u_position"] = str(obj.position)
 
 def extract_full_location(obj,labels: LabelDict):
-        string = ""
-        string += obj.site.name + "/"
-        ancestors = obj.location.get_ancestors()
-        for ancestor in ancestors:
-            string += str(ancestor) + "/"
-        string += obj.location.name + "/"
-        if obj.rack != None:
-            string += obj.rack.name
+    """
+    Extracts the full location of a given object, including site, location, ancestors, and rack (if present).
+    
+    Args:
+        obj: The object from which to extract the location.
+        labels: A dictionary of labels, into which the full location will be stored.
+        
+    Returns:
+        None
+    """
+    string = ""
+    string += obj.site.name + "/"
+    ancestors = obj.location.get_ancestors()
+    for ancestor in ancestors:
+        string += str(ancestor) + "/"
+    string += obj.location.name + "/"
+    if obj.rack != None:
+        string += obj.rack.name
 
-        labels["full_location"] = string
+    labels["full_location"] = string
 
