@@ -172,3 +172,16 @@ def extract_rack_u_poistion(obj, labels: LabelDict):
     """Extract rack U poistion"""
     if hasattr(obj, "position") and obj.position:
         labels["rack_u_position"] = str(obj.position)
+
+def extract_full_location(obj,labels: LabelDict):
+        string = ""
+        string += obj.site.name + "/"
+        ancestors = obj.location.get_ancestors()
+        for ancestor in ancestors:
+            string += str(ancestor) + "/"
+        string += obj.location.name + "/"
+        if obj.rack != None:
+            string += obj.rack.name
+
+        labels["full_location"] = string
+
