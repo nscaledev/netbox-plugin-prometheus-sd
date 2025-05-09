@@ -58,7 +58,7 @@ def extract_cluster(obj, labels: LabelDict):
             labels["cluster_group"] = obj.cluster.group.name
         if obj.cluster.type:
             labels["cluster_type"] = obj.cluster.type.name
-        if obj.cluster.site:
+        if hasattr(obj.cluster, "site") and obj.cluster.site is not None:
             labels["site"] = obj.cluster.site.name
             labels["site_slug"] = obj.cluster.site.slug
 
