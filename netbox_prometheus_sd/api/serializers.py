@@ -11,7 +11,6 @@ from . import utils
 
 
 class SDConfigContextDuplicateSerializer(serializers.ListSerializer):
-
     def update(self, instance, validated_data):
         raise NotImplementedError("ListSerializer does not support update")
 
@@ -110,6 +109,7 @@ class PrometheusDeviceSerializer(serializers.ModelSerializer, PrometheusTargetsM
         if hasattr(obj, "device_type") and obj.device_type is not None:
             labels["device_type"] = obj.device_type.model
             labels["device_type_slug"] = obj.device_type.slug
+            labels["device_manufacturer"] = obj.device_type.manufacturer.name
 
         labels = labels.get_labels()
 
