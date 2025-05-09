@@ -109,7 +109,8 @@ class PrometheusDeviceSerializer(serializers.ModelSerializer, PrometheusTargetsM
         if hasattr(obj, "device_type") and obj.device_type is not None:
             labels["device_type"] = obj.device_type.model
             labels["device_type_slug"] = obj.device_type.slug
-            labels["device_manufacturer"] = obj.device_type.manufacturer.name
+            if hasattr(obj.device_type, "manufacturer") and obj.device_type.manufacturer is not None:
+                labels["device_manufacturer"] = obj.device_type.manufacturer.name
 
         labels = labels.get_labels()
 
