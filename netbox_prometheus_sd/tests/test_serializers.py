@@ -241,6 +241,12 @@ class PrometheusDeviceSerializerTests(TestCase):
             )
         )
 
+        self.assertTrue(
+            utils.dictContainsSubset(
+                {"__meta_netbox_device_manufacturer": "juniper"}, data["labels"]
+            )
+        )
+
     def test_device_config_context_no_array(self):
         instance = utils.build_device_config_context_no_array("firewall-no-array-01")
         data = PrometheusDeviceSerializer(many=True, instance=[instance]).data[0]
