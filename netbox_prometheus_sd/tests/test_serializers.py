@@ -221,7 +221,7 @@ class PrometheusDeviceSerializerTests(TestCase):
 
         self.assertTrue(
             utils.dictContainsSubset(
-                {"__meta_netbox_device_manufacturer": "Juniper"}, data["labels"]
+                {"__meta_netbox_device_manufacturer": "juniper"}, data["labels"]
             )
         )
 
