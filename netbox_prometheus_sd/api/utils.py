@@ -43,9 +43,15 @@ def extract_location(obj, labels: LabelDict):
 
 
 def extract_tags(obj, labels):
-    if hasattr(obj, "tags") and obj.tags is not None and len(obj.tags.all()):
-        labels["tags"] = ",".join([t.name for t in obj.tags.all()])
-        labels["tag_slugs"] = ",".join([t.slug for t in obj.tags.all()])
+    if not hasattr(obj, "tags") or obj.tags is None:
+        return
+
+    tags = list(obj.tags.all())
+    if not tags:
+        return
+
+    labels["tags"] = ",".join(t.name for t in tags)
+    labels["tag_slugs"] = ",".join(t.slug for t in tags)
 
 
 def extract_tenant(obj, labels: LabelDict):
@@ -109,12 +115,12 @@ def extracts_platform(obj, label: LabelDict):
 
 
 def extract_services(obj, labels: LabelDict):
-    if (
-        hasattr(obj, "services")
-        and obj.services is not None
-        and len(obj.services.all())
-    ):
-        labels["services"] = ",".join([srv.name for srv in obj.services.all()])
+    if not hasattr(obj, "services") or obj.services is None:
+        return
+
+    services = list(obj.services.all())
+    if services:
+        labels["services"] = ",".join(srv.name for srv in services)
 
 
 def extract_contacts(obj, labels: LabelDict):
@@ -171,13 +177,13 @@ def extract_parent(obj, labels: LabelDict):
 
 
 def extract_service_ips(obj, labels: LabelDict):
-    if (
-        hasattr(obj, "ipaddresses")
-        and obj.ipaddresses is not None
-        and len(obj.ipaddresses.all())
-    ):
+    if not hasattr(obj, "ipaddresses") or obj.ipaddresses is None:
+        return
+
+    ipaddresses = list(obj.ipaddresses.all())
+    if ipaddresses:
         labels["ipaddresses"] = ",".join(
-            [str(ipaddr.address.ip) for ipaddr in obj.ipaddresses.all()]
+            str(ipaddr.address.ip) for ipaddr in ipaddresses
         )
 
 

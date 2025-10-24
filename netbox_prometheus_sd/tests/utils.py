@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
+from django.db import IntegrityError
 
 from dcim.models.devices import DeviceType, Manufacturer
 from dcim.models.sites import Site, Location
@@ -114,7 +115,7 @@ def build_vm_full(name, ip_octet=1):
     vm.tags.add("Tag 2")
     vm.save()
 
-    Service.objects.create(virtual_machine=vm, name="ssh", protocol="tcp", ports=[22])
+    _create_service_for_parent(vm, "virtual_machine")
     return vm
 
 
@@ -229,7 +230,7 @@ def build_device_full(name, ip_octet=1):
     device.tags.add("Tag 2")
     device.save()
     device.position = 1.0
-    Service.objects.create(device=device, name="ssh", protocol="tcp", ports=[22])
+    _create_service_for_parent(device, "device")
     return device
 
 
@@ -253,3 +254,29 @@ def build_full_ip(address, dns_name=""):
     ip.save()
 
     return ip
+
+def _create_service_for_parent(parent, attr):
+    service_defaults = {"name": "ssh", "protocol": "tcp", "ports": [22]}
+
+    # Legacy NetBox (<= 3.x) where Service has a concrete FK to device/virtual_machine
+    try:
+        Service.objects.create(**{attr: parent}, **service_defaults)
+        return
+    except (TypeError, FieldError, ValueError, AttributeError):
+        pass
+
+    # NetBox 4.x with GenericForeignKey `parent`
+    if hasattr(Service, "parent") and hasattr(Service, "parent_object_id"):
+        try:
+            Service.objects.create(parent=parent, **service_defaults)
+            return
+        except (IntegrityError, TypeError, FieldError, ValueError, AttributeError):
+            pass
+
+    # NetBox >= 4.2 exposes a many-to-many manager from the parent back to services
+    service = Service.objects.create(**service_defaults)
+    for rel_name in ("services", f"{attr}s", attr):
+        manager = getattr(parent, rel_name, None)
+        if manager is not None and hasattr(manager, "add"):
+            manager.add(service)
+            return

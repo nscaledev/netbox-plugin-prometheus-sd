@@ -13,8 +13,8 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.8.1,<4.0"
 
-[tool.poetry.dev-dependencies]
-invoke = "^2.2.0"
+[tool.poetry.group.dev.dependencies]
+invoke = "^2.2.1"
 typed-ast = "^1.5.5"
 
 [build-system]
