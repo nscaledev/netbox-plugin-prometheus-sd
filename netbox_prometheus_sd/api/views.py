@@ -125,10 +125,56 @@ class DeviceViewSet(NetboxPrometheusSDModelViewSet):
         "virtual_chassis__master",
     )
 
+    device_only_fields = [
+        "id",
+        "name",
+        "status",
+        "description",
+        "position",
+        "custom_field_data",
+        "site__id",
+        "site__name",
+        "site__slug",
+        "location__id",
+        "location__name",
+        "location__slug",
+        "rack__id",
+        "rack__name",
+        "platform__id",
+        "platform__name",
+        "platform__slug",
+        "tenant__id",
+        "tenant__name",
+        "tenant__slug",
+        "tenant__group__id",
+        "tenant__group__name",
+        "tenant__group__slug",
+        "device_type__id",
+        "device_type__model",
+        "device_type__slug",
+        "device_type__manufacturer__id",
+        "device_type__manufacturer__slug",
+        "virtual_chassis__id",
+        "virtual_chassis__master__id",
+        "virtual_chassis__master__name",
+        "primary_ip4__id",
+        "primary_ip4__address",
+        "primary_ip6__id",
+        "primary_ip6__address",
+        "oob_ip__id",
+        "oob_ip__address",
+    ]
+
     if hasattr(Device, "role"):
         device_queryset = device_queryset.select_related("role")
+        device_only_fields.extend(
+            ["role__id", "role__name", "role__slug"]
+        )
     else:
         device_queryset = device_queryset.select_related("device_role")
+        device_only_fields.extend(
+            ["device_role__id", "device_role__name", "device_role__slug"]
+        )
 
     prefetch_fields = [
         "tags",
@@ -139,7 +185,9 @@ class DeviceViewSet(NetboxPrometheusSDModelViewSet):
     if hasattr(Device, "contacts"):
         prefetch_fields.extend(["contacts__contact", "contacts__role"])
 
-    queryset = device_queryset.prefetch_related(*prefetch_fields)
+    queryset = (
+        device_queryset.only(*device_only_fields).prefetch_related(*prefetch_fields)
+    )
     filterset_class = DeviceFilterSet
     serializer_class = PrometheusDeviceSerializer
     pagination_class = None

@@ -156,47 +156,12 @@ class PrometheusVirtualMachineSerializerTests(TestCase):
             )
             self.assertTrue(
                 utils.dictContainsSubset(
-                    {"__meta_netbox_custom_field_simple": "Foobar 123"}, data["labels"]
-                )
-            )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {"__meta_netbox_custom_field_int": "42"}, data["labels"]
-                )
-            )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {"__meta_netbox_custom_field_bool": "True"}, data["labels"]
-                )
-            )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {"__meta_netbox_custom_field_json": "{'foo': ['bar', 'baz']}"},
+                    {"__meta_netbox_custom_field_environment": "Production"},
                     data["labels"],
                 )
             )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {"__meta_netbox_custom_field_multi_selection": "['foo', 'baz']"},
-                    data["labels"],
-                )
-            )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {
-                        "__meta_netbox_custom_field_contact": "[{'id': 1, 'url': 'http://localhost:8000/api/tenancy/contacts/1/',"
-                        + " 'display': 'Foo', 'name': 'Foo'}]"
-                    },
-                    data["labels"],
-                )
-            )
-            self.assertTrue(
-                utils.dictContainsSubset(
-                    {
-                        "__meta_netbox_custom_field_text_long": "This is\r\na  pretty\r\nlog\r\nText"
-                    },
-                    data["labels"],
-                )
+            self.assertNotIn(
+                "__meta_netbox_custom_field_simple", data["labels"]
             )
 
 
@@ -354,8 +319,12 @@ class PrometheusDeviceSerializerTests(TestCase):
         )
         self.assertTrue(
             utils.dictContainsSubset(
-                {"__meta_netbox_custom_field_simple": "Foobar 123"}, data["labels"]
+                {"__meta_netbox_custom_field_environment": "Production"},
+                data["labels"],
             )
+        )
+        self.assertNotIn(
+            "__meta_netbox_custom_field_simple", data["labels"]
         )
         self.assertTrue(
             utils.dictContainsSubset(
@@ -435,8 +404,12 @@ class PrometheusIPAddressSerializerTests(TestCase):
         )
         self.assertTrue(
             utils.dictContainsSubset(
-                {"__meta_netbox_custom_field_simple": "Foobar 123"}, data["labels"]
+                {"__meta_netbox_custom_field_environment": "Production"},
+                data["labels"],
             )
+        )
+        self.assertNotIn(
+            "__meta_netbox_custom_field_simple", data["labels"]
         )
 
 

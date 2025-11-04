@@ -13,18 +13,17 @@ NETBOX_RELEASE_41 = version.parse("4.1.11")
 class LabelDict(dict):
     """Wrapper around dict to render labels"""
 
+    _PROM_TRANSLATION = str.maketrans({ord(char): "_" for char in " -/\\!"})
+    _PROM_PREFIX = "__meta_netbox_"
+
     @staticmethod
     def promsafestr(labelval: str):
-        # add any special chars here that may appear in custom label names
-        special_chars = " -/\\!"
-        for special_char in special_chars:
-            labelval = labelval.replace(special_char, "_")
-        return labelval
+        return labelval.translate(LabelDict._PROM_TRANSLATION)
 
     def get_labels(self):
         """Prefix and replace invalid key chars for prometheus labels"""
         return {
-            "__meta_netbox_" + str(self.promsafestr(key)): val
+            f"{self._PROM_PREFIX}{self.promsafestr(str(key))}": val
             for key, val in self.items()
         }
 
@@ -124,18 +123,24 @@ def extract_services(obj, labels: LabelDict):
 
 
 def extract_contacts(obj, labels: LabelDict):
-    if hasattr(obj, "contacts") and obj.contacts is not None:
-        for contact in obj.contacts.all():
-            if hasattr(contact, "contact") and contact.contact is not None:
-                labels[f"contact_{contact.priority}_name"] = contact.contact.name
-            if contact.contact.email:
-                labels[f"contact_{contact.priority}_email"] = contact.contact.email
-            if contact.contact.comments:
-                labels[f"contact_{contact.priority}_comments"] = (
-                    contact.contact.comments
-                )
-            if hasattr(contact, "role") and contact.role is not None:
-                labels[f"contact_{contact.priority}_role"] = contact.role.name
+    contacts_rel = getattr(obj, "contacts", None)
+    if contacts_rel is None:
+        return
+
+    for assignment in contacts_rel.all():
+        contact = getattr(assignment, "contact", None)
+        if contact is None:
+            continue
+
+        priority = assignment.priority
+        labels[f"contact_{priority}_name"] = contact.name
+        if contact.email:
+            labels[f"contact_{priority}_email"] = contact.email
+        if contact.comments:
+            labels[f"contact_{priority}_comments"] = contact.comments
+        role = getattr(assignment, "role", None)
+        if role is not None:
+            labels[f"contact_{priority}_role"] = role.name
 
 
 def extract_rack(obj, labels: LabelDict):
@@ -147,12 +152,17 @@ def extract_rack(obj, labels: LabelDict):
 def extract_custom_fields(obj, labels: LabelDict):
     if hasattr(obj, "custom_field_data") and obj.custom_field_data is not None:
         for key, value in obj.custom_field_data.items():
-            # Render primitive value as string representation
-            if not hasattr(value, "__dict__"):
-                labels["custom_field_" + key.lower()] = str(value)
-            # Complex types are rendered as json
-            else:
-                labels["custom_field_" + key.lower()] = json.dumps(value)
+            if key.lower() != "environment":
+                continue
+            normalized_key = "custom_field_" + key.lower()
+
+            # Primitive values (str, int, bool, etc.) become strings
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                labels[normalized_key] = "" if value is None else str(value)
+                continue
+
+            # Lists, tuples, sets, dicts, and other complex objects are JSON encoded
+            labels[normalized_key] = json.dumps(value, separators=(",", ":"))
 
 
 def extract_prometheus_sd_config(obj, labels):
@@ -192,7 +202,7 @@ def extract_service_ports(obj, labels: LabelDict):
         labels["ports"] = ",".join([str(port) for port in obj.ports])
 
 
-def extract_rack_u_poistion(obj, labels: LabelDict):
+def extract_rack_u_position(obj, labels: LabelDict):
     """Extract rack U poistion"""
     if hasattr(obj, "position") and obj.position:
         labels["rack_u_position"] = str(obj.position)
@@ -209,13 +219,11 @@ def extract_full_location(obj, labels: LabelDict):
     Returns:
         None
     """
-    string = ""
-    string += f"{obj.site.name}/"
-    ancestors = obj.location.get_ancestors()
-    for ancestor in ancestors:
-        string += f"{str(ancestor)}/"
-    string += f"{obj.location.name}/"
+    parts = [obj.site.name]
+    parts.extend(str(ancestor) for ancestor in obj.location.get_ancestors())
+    parts.append(obj.location.name)
+    location_path = "/".join(parts)
     if obj.rack is not None:
-        string += obj.rack.name
+        location_path = f"{location_path}/{obj.rack.name}"
 
-    labels["full_location"] = string
+    labels["full_location"] = location_path

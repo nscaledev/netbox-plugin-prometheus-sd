@@ -57,6 +57,7 @@ def build_tenant():
 def build_custom_fields():
     """Build custom field definition with different kinds of custom values"""
     return {
+        "environment": "Production",
         "contact": [
             {
                 "id": 1,
