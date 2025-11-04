@@ -220,7 +220,7 @@ def extract_full_location(obj, labels: LabelDict):
         None
     """
     parts = [obj.site.name]
-    parts.extend(str(ancestor) for ancestor in obj.location.get_ancestors())
+    parts.extend(str(ancestor) for ancestor in obj.location.get_ancestors(include_self=True))
     parts.append(obj.location.name)
     location_path = "/".join(parts)
     if obj.rack is not None:
