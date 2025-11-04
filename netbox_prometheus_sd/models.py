@@ -1,3 +1,5 @@
+from mptt.models import MPTTModel
+
 class Node(MPTTModel):
     ...
     class Meta:
