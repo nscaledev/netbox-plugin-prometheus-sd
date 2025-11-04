@@ -1,5 +1,5 @@
 from mptt.models import MPTTModel
-
+from django.db import models
 class Node(MPTTModel):
     ...
     class Meta:
