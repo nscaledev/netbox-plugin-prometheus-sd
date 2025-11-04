@@ -208,22 +208,22 @@ def extract_rack_u_position(obj, labels: LabelDict):
         labels["rack_u_position"] = str(obj.position)
 
 
-def extract_full_location(obj, labels: LabelDict):
-    """
-    Extracts the full location of a given object, including site, location, ancestors, and rack (if present).
-
-    Args:
-        obj: The object from which to extract the location.
-        labels: A dictionary of labels, into which the full location will be stored.
-
-    Returns:
-        None
-    """
-    parts = [obj.site.name]
-    parts.extend(str(ancestor) for ancestor in obj.location.get_ancestors(include_self=True))
-    parts.append(obj.location.name)
-    location_path = "/".join(parts)
-    if obj.rack is not None:
-        location_path = f"{location_path}/{obj.rack.name}"
-
-    labels["full_location"] = location_path
+# def extract_full_location(obj, labels: LabelDict):
+#     """
+#     Extracts the full location of a given object, including site, location, ancestors, and rack (if present).
+#
+#     Args:
+#         obj: The object from which to extract the location.
+#         labels: A dictionary of labels, into which the full location will be stored.
+#
+#     Returns:
+#         None
+#     """
+#     parts = [obj.site.name]
+#     parts.extend(str(ancestor) for ancestor in obj.location.get_ancestors(include_self=True))
+#     parts.append(obj.location.name)
+#     location_path = "/".join(parts)
+#     if obj.rack is not None:
+#         location_path = f"{location_path}/{obj.rack.name}"
+#
+#     labels["full_location"] = location_path
