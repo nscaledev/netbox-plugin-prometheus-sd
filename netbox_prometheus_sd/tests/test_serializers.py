@@ -1,15 +1,28 @@
 from django.test import TestCase
+from unittest.mock import MagicMock
+
 from ..api.serializers import (
     PrometheusDeviceSerializer,
     PrometheusIPAddressSerializer,
     PrometheusServiceSerializer,
     PrometheusVirtualMachineSerializer,
 )
+from ..api.utils import LabelDict, extract_cluster
 from . import utils
 
 from ..api.utils import NETBOX_RELEASE_CURRENT, NETBOX_RELEASE_41
 
-class PrometheusVirtualMachineSerializerTests(TestCase):
+class DictSubsetMixin:
+    """Mixin to provide assertDictContainsSubset which was removed in Python 3.12."""
+
+    def assertDictContainsSubset(self, subset, dictionary, msg=None):
+        """Check that all key/value pairs in subset are in dictionary."""
+        for key, value in subset.items():
+            self.assertIn(key, dictionary, msg=msg)
+            self.assertEqual(dictionary[key], value, msg=msg)
+
+
+class PrometheusVirtualMachineSerializerTests(DictSubsetMixin, TestCase):
     def test_vm_minimal_to_target(self):
 
         instance = utils.build_minimal_vm("vm-01.example.com")
@@ -102,23 +115,12 @@ class PrometheusVirtualMachineSerializerTests(TestCase):
             if NETBOX_RELEASE_CURRENT > NETBOX_RELEASE_41:
                 self.assertTrue(
                     utils.dictContainsSubset(
-                        {"__meta_netbox_scope": "Campus A"}, data["labels"]
+                        {"__meta_netbox_cluster_scope": "Campus A"}, data["labels"]
                     )
                 )
                 self.assertTrue(
                     utils.dictContainsSubset(
-                        {"__meta_netbox_scope_slug": "campus-a"}, data["labels"]
-                    )
-                )
-            else:
-                self.assertTrue(
-                    utils.dictContainsSubset(
-                        {"__meta_netbox_site": "Campus A"}, data["labels"]
-                    )
-                )
-                self.assertTrue(
-                    utils.dictContainsSubset(
-                        {"__meta_netbox_site_slug": "campus-a"}, data["labels"]
+                        {"__meta_netbox_cluster_scope_slug": "campus-a"}, data["labels"]
                     )
                 )
             self.assertTrue(
@@ -200,7 +202,7 @@ class PrometheusVirtualMachineSerializerTests(TestCase):
             )
 
 
-class PrometheusDeviceSerializerTests(TestCase):
+class PrometheusDeviceSerializerTests(DictSubsetMixin, TestCase):
     def test_device_minimal_to_target(self):
         instance = utils.build_minimal_device("firewall-01")
         data = PrometheusDeviceSerializer(many=True, instance=[instance]).data[0]
@@ -364,7 +366,7 @@ class PrometheusDeviceSerializerTests(TestCase):
         )
 
 
-class PrometheusIPAddressSerializerTests(TestCase):
+class PrometheusIPAddressSerializerTests(DictSubsetMixin, TestCase):
     def test_ip_minimal_to_target(self):
         instance = utils.build_minimal_ip("10.10.10.10/24")
         data = PrometheusIPAddressSerializer(many=True, instance=[instance]).data[0]
@@ -440,7 +442,7 @@ class PrometheusIPAddressSerializerTests(TestCase):
         )
 
 
-class PrometheusServiceSerializerTests(TestCase):
+class PrometheusServiceSerializerTests(DictSubsetMixin, TestCase):
     def test_device_service_full_to_target(self):
         device = utils.build_device_full("firewall-full-01")
         instance = device.services.first()
@@ -548,23 +550,12 @@ class PrometheusServiceSerializerTests(TestCase):
             if NETBOX_RELEASE_CURRENT > NETBOX_RELEASE_41:
                 self.assertTrue(
                     utils.dictContainsSubset(
-                        {"__meta_netbox_scope": "Campus A"}, data["labels"]
+                        {"__meta_netbox_cluster_scope": "Campus A"}, data["labels"]
                     )
                 )
                 self.assertTrue(
                     utils.dictContainsSubset(
-                        {"__meta_netbox_scope_slug": "campus-a"}, data["labels"]
-                    )
-                )
-            else:
-                self.assertTrue(
-                    utils.dictContainsSubset(
-                        {"__meta_netbox_site": "Campus A"}, data["labels"]
-                    )
-                )
-                self.assertTrue(
-                    utils.dictContainsSubset(
-                        {"__meta_netbox_site_slug": "campus-a"}, data["labels"]
+                        {"__meta_netbox_cluster_scope_slug": "campus-a"}, data["labels"]
                     )
                 )
             self.assertTrue(
@@ -582,3 +573,88 @@ class PrometheusServiceSerializerTests(TestCase):
                     {"__meta_netbox_primary_ip6": "2001:db8:1701::2"}, data["labels"]
                 )
             )
+
+
+class ExtractClusterTests(TestCase):
+    """Tests for extract_cluster function handling both NetBox 4.2+ scope and older site."""
+
+    def test_extract_cluster_basic_info(self):
+        """Test that basic cluster info (name, group, type) is extracted."""
+        device = utils.build_device_with_cluster("device-cluster-test", cluster_name="TestCluster")
+        labels = LabelDict()
+        extract_cluster(device, labels)
+
+        self.assertEqual(labels.get("cluster"), "TestCluster")
+        self.assertEqual(labels.get("cluster_group"), "VMware")
+        self.assertEqual(labels.get("cluster_type"), "On Prem")
+
+    def test_extract_cluster_scope_from_scope(self):
+        """Test that scope labels are extracted from cluster scope (NetBox 4.2+)."""
+        device = utils.build_device_with_cluster("device-scope-test", cluster_name="ScopeCluster")
+        labels = LabelDict()
+        extract_cluster(device, labels)
+
+        # In NetBox 4.2+, cluster scope is labeled as 'cluster_scope'
+        self.assertEqual(labels.get("cluster_scope"), "Cluster Site")
+        self.assertEqual(labels.get("cluster_scope_slug"), "cluster-site")
+        # Device's own site takes precedence for 'site' label
+        self.assertEqual(labels.get("site"), "Site")
+        self.assertEqual(labels.get("site_slug"), "site")
+
+    def test_extract_cluster_no_cluster(self):
+        """Test that no cluster labels are added when device has no cluster."""
+        device = utils.build_minimal_device("device-no-cluster-test")
+        labels = LabelDict()
+        extract_cluster(device, labels)
+
+        self.assertIsNone(labels.get("cluster"))
+        self.assertIsNone(labels.get("cluster_group"))
+        self.assertIsNone(labels.get("cluster_type"))
+
+    def test_extract_cluster_device_site_overrides_cluster_site(self):
+        """Test that device's own site takes precedence over cluster site."""
+        device = utils.build_device_with_cluster("device-site-override", cluster_name="OverrideCluster")
+        # Device's own site should override cluster site
+        labels = LabelDict()
+        extract_cluster(device, labels)
+
+        # Device has its own site set in build_minimal_device ("Site", "site")
+        # which should take precedence over the cluster's site
+        self.assertEqual(labels.get("site"), "Site")
+        self.assertEqual(labels.get("site_slug"), "site")
+
+    def test_extract_cluster_with_scope_mock(self):
+        """Test extract_cluster with mocked scope object (NetBox 4.2+ style)."""
+        # Create a mock object to simulate NetBox 4.2+ cluster with scope
+        mock_site = MagicMock()
+        mock_site.name = "Scoped Site"
+        mock_site.slug = "scoped-site"
+        mock_site.__class__.__name__ = "Site"
+
+        mock_cluster = MagicMock()
+        mock_cluster.name = "MockCluster"
+        mock_cluster.group = MagicMock(name="MockGroup")
+        mock_cluster.group.name = "Mock Group"
+        mock_cluster.type = MagicMock(name="MockType")
+        mock_cluster.type.name = "Mock Type"
+        mock_cluster.scope = mock_site
+        # Ensure hasattr returns True for scope
+        del mock_cluster.site
+
+        mock_obj = MagicMock()
+        mock_obj.cluster = mock_cluster
+        # Remove site attribute from obj
+        del mock_obj.site
+
+        labels = LabelDict()
+        extract_cluster(mock_obj, labels)
+
+        self.assertEqual(labels.get("cluster"), "MockCluster")
+        self.assertEqual(labels.get("cluster_group"), "Mock Group")
+        self.assertEqual(labels.get("cluster_type"), "Mock Type")
+        # In NetBox 4.2+, cluster scope is labeled as 'cluster_scope'
+        self.assertEqual(labels.get("cluster_scope"), "Scoped Site")
+        self.assertEqual(labels.get("cluster_scope_slug"), "scoped-site")
+        # Since scope is a Site, site labels should also be set
+        self.assertEqual(labels.get("site"), "Scoped Site")
+        self.assertEqual(labels.get("site_slug"), "scoped-site")

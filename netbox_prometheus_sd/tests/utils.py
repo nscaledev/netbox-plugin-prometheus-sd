@@ -1,6 +1,3 @@
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldError
-
 from dcim.models.devices import DeviceType, Manufacturer
 from dcim.models.sites import Site, Location
 from dcim.models import Device, DeviceRole, Platform, Rack
@@ -17,28 +14,53 @@ from virtualization.models import (
 )
 
 
-# replacement for assertDictContainsSubset
+# replacement for assertDictContainsSubset which was removed in Python 3.12
 def dictContainsSubset(subset, fullset):
     return set(subset.items()).issubset(set(fullset.items()))
 
 
-def build_cluster():
-    try: # NetBox 4.2+
-        scope_type = ContentType.objects.get_for_model(Site)
-        return Cluster.objects.get_or_create(
-            name="DC1",
-            group=ClusterGroup.objects.get_or_create(name="VMware")[0],
-            type=ClusterType.objects.get_or_create(name="On Prem")[0],
-            scope_type=scope_type,
-            scope_id=Site.objects.get_or_create(name="Campus A", slug="campus-a")[0].id,
-        )[0]
-    except FieldError: # NetBox <4.2
-        return Cluster.objects.get_or_create(
-            name="DC1",
-            group=ClusterGroup.objects.get_or_create(name="VMware")[0],
-            type=ClusterType.objects.get_or_create(name="On Prem")[0],
-            site=Site.objects.get_or_create(name="Campus A", slug="campus-a")[0],
-        )[0]
+def build_cluster(name="DC1", site_name="Campus A", site_slug="campus-a"):
+    """Build a cluster, handling both NetBox 4.2+ (scope) and older versions (site).
+
+    Note: scope is a GenericForeignKey and can't be used in get_or_create queries,
+    so we first try to get by name, then create if not found.
+    """
+    # Try to get existing cluster by name first
+    try:
+        return Cluster.objects.get(name=name)
+    except Cluster.DoesNotExist:
+        pass
+
+    site = Site.objects.get_or_create(name=site_name, slug=site_slug)[0]
+    group = ClusterGroup.objects.get_or_create(name="VMware")[0]
+    cluster_type = ClusterType.objects.get_or_create(name="On Prem")[0]
+
+    # NetBox 4.2+ uses scope (GenericForeignKey) instead of site
+    if hasattr(Cluster, "scope"):
+        cluster = Cluster.objects.create(
+            name=name,
+            group=group,
+            type=cluster_type,
+        )
+        cluster.scope = site
+        cluster.save()
+    else:
+        cluster = Cluster.objects.create(
+            name=name,
+            group=group,
+            type=cluster_type,
+            site=site,
+        )
+    return cluster
+
+
+def build_device_with_cluster(name, cluster_name="SYS2-STA1"):
+    """Build a device associated with a cluster."""
+    cluster = build_cluster(name=cluster_name, site_name="Cluster Site", site_slug="cluster-site")
+    device = build_minimal_device(name)
+    device.cluster = cluster
+    device.save()
+    return device
 
 
 def build_location():

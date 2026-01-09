@@ -66,21 +66,23 @@ def extract_cluster(obj, labels: LabelDict):
             labels["cluster_group"] = obj.cluster.group.name
         if obj.cluster.type:
             labels["cluster_type"] = obj.cluster.type.name
-        try: # Netbox >4.2
-            if obj.cluster.scope:
-                labels["scope"] = obj.cluster.scope.name
-                labels["scope_slug"] = obj.cluster.scope.slug
-        except AttributeError: # Netbox <4.2
-            if obj.cluster.site:
-                labels["site"] = obj.cluster.site.name
-                labels["site_slug"] = obj.cluster.site.slug
+        # NetBox 4.2+ uses scope (generic FK) instead of site
+        if hasattr(obj.cluster, "scope") and obj.cluster.scope is not None:
+            scope = obj.cluster.scope
+            # scope can be region, site_group, site, or location
+            if hasattr(scope, "slug"):
+                labels["cluster_scope"] = scope.name
+                labels["cluster_scope_slug"] = scope.slug
+            # If scope is a site, also set site labels
+            if scope.__class__.__name__ == "Site":
+                labels["site"] = scope.name
+                labels["site_slug"] = scope.slug
+        # NetBox < 4.2 uses site directly
+        elif hasattr(obj.cluster, "site") and obj.cluster.site:
+            labels["site"] = obj.cluster.site.name
+            labels["site_slug"] = obj.cluster.site.slug
 
-    # Has precedence over cluster scope
-    if hasattr(obj, "scope") and obj.scope is not None:
-        labels["scope"] = obj.scope.name
-        labels["scope_slug"] = obj.scope.slug
-
-    # Still Return site labels for Devices
+    # Has precedence over cluster site/scope
     if hasattr(obj, "site") and obj.site is not None:
         labels["site"] = obj.site.name
         labels["site_slug"] = obj.site.slug

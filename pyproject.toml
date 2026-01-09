@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "netbox-plugin-prometheus-sd"
-version = "0.0.0" # placeholder
+version = "0.0.1" # placeholder
 description = "A Netbox plugin to provide Netbox entires to Prometheus HTTP service discovery"
 authors = ["Felix Peters <felix.peters@breuninger.de>"]
 license = "MIT"
