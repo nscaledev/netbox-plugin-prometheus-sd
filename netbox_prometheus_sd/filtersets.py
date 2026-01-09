@@ -14,6 +14,11 @@ try:
 except ImportError:
     from ipam.filters import ServiceFilterSet as NetboxServiceFilterSet
 
+try:
+    from dcim.filtersets import DeviceFilterSet as NetboxDeviceFilterSet
+except ImportError:
+    from dcim.filters import DeviceFilterSet as NetboxDeviceFilterSet
+
 
 class ServiceFilterSet(NetboxServiceFilterSet):
     """Filter set to support tenancy over the device/VM foreign key.
@@ -59,3 +64,23 @@ class ServiceFilterSet(NetboxServiceFilterSet):
             Q(device__tenant__slug__in=value)
             | Q(virtual_machine__tenant__slug__in=value)
         )
+
+
+class DeviceFilterSet(NetboxDeviceFilterSet):
+    """Extends NetBox's DeviceFilterSet to add cluster name filter.
+
+    NetBox's DeviceFilterSet only has cluster_id, not cluster (name).
+    This adds the missing cluster name filter for consistency with other filters.
+    Cluster model doesn't have a slug field, so we filter by name (case-insensitive).
+    """
+
+    cluster = MultiValueCharFilter(
+        method='filter_by_cluster_name',
+        label=_('Cluster (name)'),
+    )
+
+    def filter_by_cluster_name(self, queryset, name, value):
+        q = Q()
+        for v in value:
+            q |= Q(cluster__name__iexact=v)
+        return queryset.filter(q)
