@@ -43,9 +43,11 @@ def extract_location(obj, labels: LabelDict):
 
 
 def extract_tags(obj, labels):
-    if hasattr(obj, "tags") and obj.tags is not None and len(obj.tags.all()):
-        labels["tags"] = ",".join([t.name for t in obj.tags.all()])
-        labels["tag_slugs"] = ",".join([t.slug for t in obj.tags.all()])
+    if hasattr(obj, "tags") and obj.tags is not None:
+        tags = list(obj.tags.all())
+        if tags:
+            labels["tags"] = ",".join([t.name for t in tags])
+            labels["tag_slugs"] = ",".join([t.slug for t in tags])
 
 
 def extract_tenant(obj, labels: LabelDict):
@@ -111,12 +113,10 @@ def extracts_platform(obj, label: LabelDict):
 
 
 def extract_services(obj, labels: LabelDict):
-    if (
-        hasattr(obj, "services")
-        and obj.services is not None
-        and len(obj.services.all())
-    ):
-        labels["services"] = ",".join([srv.name for srv in obj.services.all()])
+    if hasattr(obj, "services") and obj.services is not None:
+        services = list(obj.services.all())
+        if services:
+            labels["services"] = ",".join([srv.name for srv in services])
 
 
 def extract_contacts(obj, labels: LabelDict):
@@ -173,14 +173,12 @@ def extract_parent(obj, labels: LabelDict):
 
 
 def extract_service_ips(obj, labels: LabelDict):
-    if (
-        hasattr(obj, "ipaddresses")
-        and obj.ipaddresses is not None
-        and len(obj.ipaddresses.all())
-    ):
-        labels["ipaddresses"] = ",".join(
-            [str(ipaddr.address.ip) for ipaddr in obj.ipaddresses.all()]
-        )
+    if hasattr(obj, "ipaddresses") and obj.ipaddresses is not None:
+        ips = list(obj.ipaddresses.all())
+        if ips:
+            labels["ipaddresses"] = ",".join(
+                [str(ipaddr.address.ip) for ipaddr in ips]
+            )
 
 
 def extract_service_ports(obj, labels: LabelDict):
@@ -198,19 +196,17 @@ def extract_full_location(obj, labels: LabelDict):
     """
     Extracts the full location of a given object, including site, location, ancestors, and rack (if present).
 
-    Args:
-        obj: The object from which to extract the location.
-        labels: A dictionary of labels, into which the full location will be stored.
-
-    Returns:
-        None
+    Traverses the parent chain instead of calling get_ancestors() to avoid a per-object DB query.
+    Requires "location__parent__parent__parent__parent" (or deeper) in the queryset's prefetch_related.
     """
-    string = ""
-    string += f"{obj.site.name}/"
-    ancestors = obj.location.get_ancestors()
-    for ancestor in ancestors:
-        string += f"{str(ancestor)}/"
-    string += f"{obj.location.name}/"
+    parts = []
+    current = obj.location
+    while current is not None:
+        parts.append(current.name)
+        current = current.parent  # resolved from prefetch cache, no extra query
+    parts.reverse()
+
+    string = f"{obj.site.name}/" + "/".join(parts) + "/"
     if obj.rack is not None:
         string += obj.rack.name
 

@@ -66,12 +66,17 @@ class VirtualMachineViewSet(NetboxPrometheusSDModelViewSet):
         cluster_scope,
         "role",
         "tenant",
+        "tenant__group",
         "platform",
         "primary_ip4",
         "primary_ip6",
         "tags",
         "services",
         "contacts",
+        "contacts__contact",
+        "contacts__role",
+        "cluster__group",
+        "cluster__type",
     )
     filterset_class = VirtualMachineFilterSet
     serializer_class = PrometheusVirtualMachineSerializer
@@ -79,13 +84,19 @@ class VirtualMachineViewSet(NetboxPrometheusSDModelViewSet):
 
 
 class DeviceViewSet(NetboxPrometheusSDModelViewSet):
+    if NETBOX_RELEASE_CURRENT > NETBOX_RELEASE_41:
+        cluster_scope = "cluster__scope"
+    else:
+        cluster_scope = "cluster__site"
     queryset = Device.objects.prefetch_related(
+        cluster_scope,
         "device_type__manufacturer",
         "role" if hasattr(Device, "role") else "device_role",
         "tenant",
+        "tenant__group",
         "platform",
         "site",
-        "location",
+        "location__parent__parent__parent__parent",
         "rack",
         "parent_bay",
         "virtual_chassis__master",
@@ -94,6 +105,10 @@ class DeviceViewSet(NetboxPrometheusSDModelViewSet):
         "tags",
         "cluster__group",
         "cluster__type",
+        "contacts",
+        "contacts__contact",
+        "contacts__role",
+        "services",
     )
     filterset_class = DeviceFilterSet
     serializer_class = PrometheusDeviceSerializer
